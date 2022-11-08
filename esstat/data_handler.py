@@ -1,4 +1,5 @@
-from requests import get
+# pylint: disable=missing-module-docstring,missing-class-docstring
+import aiohttp
 
 STATE_FIELDS = (
     "active_primary_shards",
@@ -41,20 +42,29 @@ class DataHandler:
         self.port = port
         self.scheme = scheme
 
-    def _get(self, path: str):
-        with get(f"{self.scheme}://{self.api}:{self.port}/{path}") as ret:
-            return ret.json() if ret.ok else None
+    async def _get(self, path: str):
+        """Retrieve data from given url"""
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{self.scheme}://{self.api}:{self.port}/{path}"
+            ) as ret:
+                return await ret.json() if ret.status == 20 else None
 
-    def get_status(self):
-        raw = self._get("_cluster/health") or {}
+    async def get_status(self):
+        """Get raw cluster status."""
+        raw = await self._get("_cluster/health") or {}
         return {k: v for k, v in raw.items() if k in STATE_FIELDS}
 
-    def get_recovery(self):
-        return self._get("_cat/recovery?active_only=true&format=json") or []
+    async def get_recovery(self):
+        """Get list of shards beeing recovered."""
+        return await self._get("_cat/recovery?active_only=true&format=json") or []
 
-    def get_settings(self):
+    async def get_settings(self):
+        """Get cluster settings."""
         raw_data = (
-            self._get("_cluster/settings?include_defaults=true&flat_settings=true")
+            await self._get(
+                "_cluster/settings?include_defaults=true&flat_settings=true"
+            )
             or {}
         )
         raw = {
@@ -64,7 +74,8 @@ class DataHandler:
         }
         return {k: v for k, v in raw.items() if k in SETTING_FIELDS}
 
-    def get_relocations(self):
+    async def get_relocations(self):
+        """Get list of shards being relocated."""
         filter_out = ("STARTED",)
-        records = self._get("_cat/shards?v=true&format=json") or []
+        records = await self._get("_cat/shards?v=true&format=json") or []
         return list(filter(lambda r: r.get("state") not in filter_out, records))

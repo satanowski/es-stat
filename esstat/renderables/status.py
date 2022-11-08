@@ -20,7 +20,7 @@ def status_row(key: str, val: Union[str, int], state: Union[bool, None] = None):
     if isinstance(val, bool):
         val = "✖" if val else "✓"
     if isinstance(val, float):
-        val = round(val,2)
+        val = round(val, 2)
     return Text.from_markup(f"[bold]{str(val).ljust(6)}[/bold][{color}]{key}[/]")
 
 

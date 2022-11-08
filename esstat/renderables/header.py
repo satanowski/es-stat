@@ -7,7 +7,7 @@ from rich.table import Table
 
 
 class Header:  # pylint: disable=too-few-public-methods
-    
+
     """Display app header with clock."""
 
     def __init__(self, app_name: str, cluster_name: str):

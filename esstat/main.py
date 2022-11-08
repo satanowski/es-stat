@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=
 """
 Simple ES cluster monitoring tool.
 
@@ -9,18 +10,19 @@ Todo:
 """
 
 
+import asyncio
 import sys
-from argparse import ArgumentParser
 from time import sleep
 
+import click
 from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 
-from data_handler import DataHandler
-from renderables import recovery, relocation, settings, status
-from renderables.header import Header
+from esstat.data_handler import DataHandler
+from esstat.renderables import recovery, relocation, settings, status
+from esstat.renderables.header import Header
 
 APP_NAME = "EsStat"
 PROC_NUM = 4
@@ -34,7 +36,8 @@ def make_layout(cluster_name="") -> Layout:
     lay = Layout(name="root")
     lay.split(Layout(name="header", size=3), Layout(name="main", ratio=1))
     lay["main"].split_row(
-        Layout(name="side", minimum_size=50), Layout(name="body", ratio=4, minimum_size=100)
+        Layout(name="side", minimum_size=50),
+        Layout(name="body", ratio=4, minimum_size=100),
     )
     lay["side"].split(Layout(name="status", size=29), Layout(name="settings"))
     lay["body"].split(Layout(name="reloc"), Layout(name="recov"))
@@ -69,22 +72,27 @@ def update_screen(lay, dah: DataHandler):
     return lay
 
 
-if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument("address")
-    args = parser.parse_args()
+def printscreen(host: str, port: int):
+    """Render the screen and update it."""
+    layout = make_layout(host)
+    dah = DataHandler(host, port)
 
-    # to do --- handling port and logging
-    if not args.address:
-        sys.exit(1)
+    with Live(layout, refresh_per_second=4) as live:
+        while True:
+            live.update(update_screen(layout, dah))
+            sleep(5)
 
+
+@click.command(name=APP_NAME.lower(), help="Monitor ElasticSearch cluster state")
+@click.option("--port", default=9200, help="Elasticsearch node port")
+@click.argument("host")
+def main(host, port):
+    """The main app entrypoint."""
     try:
-        layout = make_layout(args.address)
-        dh = DataHandler(args.address)
-
-        with Live(layout, refresh_per_second=4) as live:
-            while True:
-                live.update(update_screen(layout, dh))
-                sleep(5)
+        asyncio.run(printscreen(host, port))
     except KeyboardInterrupt:
         sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()  # pylint: disable=no-value-for-parameter
