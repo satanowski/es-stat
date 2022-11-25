@@ -51,35 +51,35 @@ def make_layout(cluster_name="") -> Layout:
     return lay
 
 
-def update_screen(lay, dah: DataHandler):
+async def update_screen(lay, dah: DataHandler):
     """Update screen elements with new data."""
-    lay["status"].update(Panel(status.render_data(dah.get_status()), title="Status"))
+    lay["status"].update(Panel(status.render_data(await dah.get_status()), title="Status"))
     lay["settings"].update(
-        Panel(settings.render_data(dah.get_settings()), title="Settings")
+        Panel(settings.render_data(await dah.get_settings()), title="Settings")
     )
     lay["recov"].update(
         Panel(
-            recovery.render_data(dah.get_recovery()),
+            recovery.render_data(await dah.get_recovery()),
             title="Shards recovery in progress...",
         )
     )
     lay["reloc"].update(
         Panel(
-            relocation.render_data(dah.get_relocations()),
+            relocation.render_data(await dah.get_relocations()),
             title="Shards relocation in progress...",
         )
     )
     return lay
 
 
-def printscreen(host: str, port: int):
+async def printscreen(host: str, port: int):
     """Render the screen and update it."""
     layout = make_layout(host)
     dah = DataHandler(host, port)
 
     with Live(layout, refresh_per_second=4) as live:
         while True:
-            live.update(update_screen(layout, dah))
+            live.update(await update_screen(layout, dah))
             sleep(5)
 
 

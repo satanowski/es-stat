@@ -45,10 +45,10 @@ class DataHandler:
     async def _get(self, path: str):
         """Retrieve data from given url"""
         async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{self.scheme}://{self.api}:{self.port}/{path}"
-            ) as ret:
-                return await ret.json() if ret.status == 20 else None
+            url = f"{self.scheme}://{self.api}:{self.port}/{path}"
+            async with session.get(url) as ret:
+                if ret.status == 200:
+                    return await ret.json()
 
     async def get_status(self):
         """Get raw cluster status."""
