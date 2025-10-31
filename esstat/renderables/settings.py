@@ -3,7 +3,6 @@
 from typing import Union
 
 from rich import box
-from rich.console import Group
 from rich.padding import Padding
 from rich.panel import Panel
 from rich.table import Table
@@ -11,6 +10,7 @@ from rich.text import Text
 
 from .common import empty_box
 
+# Elasticsearch setting shortcuts (for highlighting in settings table)
 SHORTCUTS = (
     "allocation",
     "balance",
@@ -28,6 +28,14 @@ SHORTCUTS = (
     ("connections", "con"),
 )
 
+# Keyboard shortcuts
+KEYBOARD_SHORTCUTS = (
+    ("h", "Toggle this help"),
+    ("p", "Pause / Resume updates"),
+    ("e", "Toggle edit mode"),
+    ("q", "Quit application"),
+)
+
 
 def _short(rep: str) -> str:
     for short in SHORTCUTS:
@@ -38,7 +46,7 @@ def _short(rep: str) -> str:
     return rep
 
 
-def render_table(data: dict = {}):  # pylint: disable=dangerous-default-value
+def render_table(data: dict = {}, selected_row: int | None = None):  # pylint: disable=dangerous-default-value
     if not data:
         return empty_box("No settings retrieved")
 
@@ -46,8 +54,16 @@ def render_table(data: dict = {}):  # pylint: disable=dangerous-default-value
     table.add_column("Setting", justify="left", no_wrap=True)
     table.add_column("Value")
 
-    for key, val in data.items():
-        table.add_row(Text.from_markup(_short(key)), str(val))
+    for idx, (key, val) in enumerate(data.items()):
+        # Highlight the selected row in edit mode
+        if selected_row is not None and idx == selected_row:
+            key_text = Text.from_markup(_short(key))
+            key_text.stylize("reverse bold yellow")
+            val_text = Text(str(val))
+            val_text.stylize("reverse bold yellow")
+            table.add_row(key_text, val_text)
+        else:
+            table.add_row(Text.from_markup(_short(key)), str(val))
     return table
 
 
@@ -60,6 +76,7 @@ def _bold(txt: str) -> Text:
 
 
 def render_shortcuts_legend():
+    """Render the Elasticsearch settings shortcuts legend."""
     table = Table(expand=True, box=None)
     for _ in range(4):
         table.add_column("")
@@ -71,13 +88,59 @@ def render_shortcuts_legend():
     return table
 
 
-def render_data(data):
-    return Group(
-        Padding(render_table(data), pad=(1, 0, 1, 0)),
-        Panel(
-            Padding(render_shortcuts_legend(), pad=(1, 0, 1, 0)),
-            title="Shortcuts",
-            box=box.SQUARE,
-            expand=True,
-        ),
+def render_keyboard_shortcuts():
+    """Render keyboard shortcuts for the help panel."""
+    from rich.console import Group
+    
+    shortcuts_text = []
+    shortcuts_text.append(Text("Keyboard Shortcuts", style="bold yellow", justify="center"))
+    shortcuts_text.append(Text(""))
+    
+    for key, description in KEYBOARD_SHORTCUTS:
+        line = Text()
+        line.append(f"  {key}  ", style="bold white on blue")
+        line.append(f"  {description}")
+        shortcuts_text.append(line)
+    
+    shortcuts_text.append(Text(""))
+    shortcuts_text.append(Text("Settings Filter Shortcuts", style="bold cyan", justify="center"))
+    shortcuts_text.append(Text("(highlighted in settings table)", style="dim italic", justify="center"))
+    shortcuts_text.append(Text(""))
+    
+    # Add ES shortcuts in a more compact format
+    for short in SHORTCUTS:
+        if isinstance(short, tuple):
+            line = Text(f"  {short[1]}  ", style="bold white on green")
+            line.append(f"  {short[0]}")
+        else:
+            line = Text(f"  {short[0]}  ", style="bold white on green")
+            line.append(f"  {short}")
+        shortcuts_text.append(line)
+    
+    return Group(*shortcuts_text)
+
+
+def render_data(data, selected_row: int | None = None):
+    return Padding(render_table(data, selected_row), pad=(1, 0, 1, 0))
+
+
+def render_help_panel():
+    """Render the help panel to replace cluster status panel."""
+    return Panel(
+        Padding(render_keyboard_shortcuts(), pad=(1, 2, 1, 2)),
+        title="Help (press 'h' to close)",
+        box=box.SQUARE,
+        expand=True,
+        border_style="yellow",
+    )
+
+
+def render_help_modal():
+    """Render the help modal with shortcuts legend."""
+    return Panel(
+        Padding(render_shortcuts_legend(), pad=(1, 0, 1, 0)),
+        title="Shortcuts (press 'h' to close)",
+        box=box.HEAVY,
+        expand=True,
+        border_style="yellow",
     )
